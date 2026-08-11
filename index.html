@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerador de Notas — Implantação Técnica</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #4f6ef7;
+      --accent-hover: #3d5ce0;
+      --accent-light: rgba(79,110,247,0.15);
+      --accent-selected: rgba(79,110,247,0.25);
+      --green: #22c55e;
+      --green-bg: rgba(34,197,94,0.12);
+      --text: #e8eaf6;
+      --text-muted: #8b90a8;
+      --text-label: #a0a8c8;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-icon {
+      width: 38px; height: 38px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .header-title h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.2px;
+    }
+    .header-title p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+    .header-date {
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--text-muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px 12px;
+    }
+
+    /* MAIN */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* CARD */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* FORM ELEMENTS */
+    label.field-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-label);
+      margin-bottom: 8px;
+      margin-top: 18px;
+    }
+    label.field-label:first-child { margin-top: 0; }
+
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      font-family: inherit;
+      resize: vertical;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,110,247,0.15);
+    }
+    input[type="text"]::placeholder, textarea::placeholder {
+      color: var(--text-muted);
+    }
+    textarea { min-height: 72px; }
+
+    /* PILL SELECTOR (Reunião) */
+    .pill-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .pill {
+      padding: 7px 16px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--text); }
+    .pill.selected {
+      border-color: var(--accent);
+      background: var(--accent-selected);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* CHECKBOX CARDS */
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .check-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .check-card:hover { border-color: var(--accent); color: var(--text); }
+    .check-card.checked {
+      border-color: var(--accent);
+      background: var(--accent-selected);
+      color: var(--text);
+      font-weight: 600;
+    }
+    .check-card .chk-icon {
+      width: 17px; height: 17px;
+      border-radius: 4px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .check-card.checked .chk-icon {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .check-card.checked .chk-icon::after {
+      content: '✓';
+      font-size: 11px;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* GRAVAÇÃO */
+    .recording-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .recording-item { display: flex; align-items: center; gap: 10px; }
+    .recording-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      min-width: 90px;
+      font-weight: 600;
+    }
+    .recording-item input { flex: 1; }
+    .btn-remove-rec {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 7px 10px;
+      font-size: 16px;
+      line-height: 1;
+      transition: all 0.15s;
+    }
+    .btn-remove-rec:hover { border-color: var(--danger); color: var(--danger); }
+    .btn-add-rec {
+      margin-top: 6px;
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--accent);
+      cursor: pointer;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      width: 100%;
+      transition: all 0.15s;
+    }
+    .btn-add-rec:hover { border-color: var(--accent); background: var(--accent-light); }
+
+    /* ACTION BUTTONS */
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      flex: 1;
+      min-width: 180px;
+      padding: 14px 24px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-secondary {
+      padding: 14px 24px;
+      background: var(--surface2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--warn); color: var(--warn); }
+
+    /* NOTA GERADA */
+    #nota-area { display: none; }
+    .nota-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13.5px;
+      line-height: 1.75;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .nota-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      align-items: center;
+    }
+    .btn-copy {
+      padding: 11px 24px;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-copy:hover { background: #16a34a; }
+    .copy-feedback {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .copy-feedback.show { opacity: 1; }
+
+    /* HIDDEN */
+    .hidden { display: none !important; }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    /* INFO TIP */
+    .tip {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: rgba(79,110,247,0.07);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* SCROLL TOP */
+    #toTopBtn {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      width: 42px; height: 42px;
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition: opacity 0.2s;
+      z-index: 200;
+    }
+    #toTopBtn.visible { display: flex; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-icon">📋</div>
+    <div class="header-title">
+      <h1>Gerador de Notas</h1>
+      <p>Implantação Técnica — Jet One</p>
+    </div>
+    <div class="header-date" id="header-date"></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============================
+       1. DADOS DA REUNIÃO
+  ============================= -->
+  <div class="card">
+    <div class="card-title">1. Dados da Reunião</div>
+
+    <label class="field-label">Qual reunião?</label>
+    <div class="pill-grid" id="reuniao-pills">
+      <div class="pill" data-value="1° REUNIÃO">1° REUNIÃO</div>
+      <div class="pill" data-value="2° REUNIÃO">2° REUNIÃO</div>
+      <div class="pill" data-value="3° REUNIÃO">3° REUNIÃO</div>
+      <div class="pill" data-value="4° REUNIÃO">4° REUNIÃO</div>
+      <div class="pill" data-value="5° REUNIÃO">5° REUNIÃO</div>
+      <div class="pill" data-value="6° REUNIÃO">6° REUNIÃO</div>
+      <div class="pill" data-value="7° REUNIÃO">7° REUNIÃO</div>
+      <div class="pill" data-value="8° REUNIÃO">8° REUNIÃO</div>
+      <div class="pill" data-value="REUNIÃO DE RETREINAMENTO">RETREINAMENTO</div>
+      <div class="pill" data-value="OUTRO">OUTRO</div>
+    </div>
+
+    <div id="outro-nome-wrap" class="hidden" style="margin-top:14px;">
+      <label class="field-label" style="margin-top:0;">Nome da reunião</label>
+      <input type="text" id="outro-nome" placeholder="Ex: Retreinamento da equipe" />
+    </div>
+
+    <div class="divider"></div>
+
+    <label class="field-label">Duração</label>
+    <input type="text" id="duracao" placeholder="Ex: 1h, 1 hora e 30 min, 45 minutos" />
+
+    <label class="field-label">Participantes</label>
+    <input type="text" id="participantes" placeholder="Ex: Lucas, Maria e equipe" />
+  </div>
+
+  <!-- ============================
+       2. O QUE FOI REALIZADO
+  ============================= -->
+  <div class="card">
+    <div class="card-title">2. O que foi realizado / apresentado</div>
+
+    <div class="checkbox-grid" id="realizado-grid">
+      <!-- gerado via JS -->
+    </div>
+
+    <label class="field-label" style="margin-top:18px;">Informações adicionais</label>
+    <textarea id="realizado-extra" placeholder="Descreva algo que não esteja listado acima (opcional)"></textarea>
+    <div class="tip">Esse campo complementa — ou substitui — as opções acima quando necessário.</div>
+  </div>
+
+  <!-- ============================
+       3. O QUE FICOU PENDENTE
+  ============================= -->
+  <div class="card">
+    <div class="card-title">3. O que ficou pendente</div>
+
+    <div class="checkbox-grid" id="pendente-grid">
+      <!-- gerado via JS -->
+    </div>
+
+    <label class="field-label" style="margin-top:18px;">Outras pendências</label>
+    <textarea id="pendente-extra" placeholder="Ex: Instagram, dúvidas, configuração do número (separadas por vírgula)"></textarea>
+  </div>
+
+  <!-- ============================
+       4. POSSÍVEL UPSELL
+  ============================= -->
+  <div class="card">
+    <div class="card-title">4. Possível Upsell</div>
+
+    <div class="checkbox-grid" id="upsell-grid">
+      <!-- gerado via JS -->
+    </div>
+
+    <label class="field-label" style="margin-top:18px;">Observação sobre o possível upsell</label>
+    <textarea id="upsell-obs" placeholder="Ex: Cliente demonstrou interesse em contratar mais usuários (opcional)"></textarea>
+  </div>
+
+  <!-- ============================
+       5. OBSERVAÇÕES
+  ============================= -->
+  <div class="card">
+    <div class="card-title">5. Observações</div>
+    <textarea id="observacoes" placeholder="Ex: Cliente não pretende utilizar API Oficial neste momento (opcional)" style="min-height:80px;"></textarea>
+  </div>
+
+  <!-- ============================
+       6. GRAVAÇÃO
+  ============================= -->
+  <div class="card">
+    <div class="card-title">6. Gravação</div>
+
+    <div class="recording-list" id="recording-list">
+      <div class="recording-item">
+        <span class="recording-label">GRAVAÇÃO 1:</span>
+        <input type="text" placeholder="Cole o link aqui (ex: https://www.loom.com/...)" />
+      </div>
+    </div>
+    <button class="btn-add-rec" id="btn-add-rec" onclick="addRecording()">+ Adicionar outra gravação</button>
+  </div>
+
+  <!-- ============================
+       BOTÕES DE AÇÃO
+  ============================= -->
+  <div class="actions">
+    <button class="btn-primary" onclick="gerarNota()">⚡ GERAR NOTA</button>
+    <button class="btn-secondary" onclick="limparTudo()">🗑 LIMPAR</button>
+  </div>
+
+  <!-- ============================
+       7. NOTA GERADA
+  ============================= -->
+  <div class="card" id="nota-area">
+    <div class="card-title">7. Nota Gerada</div>
+    <div class="nota-box" id="nota-output"></div>
+    <div class="nota-actions">
+      <button class="btn-copy" onclick="copiarNota()">📋 COPIAR NOTA</button>
+      <span class="copy-feedback" id="copy-feedback">✓ Nota copiada!</span>
+    </div>
+  </div>
+
+</main>
+
+<button id="toTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// ============================================================
+// DADOS
+// ============================================================
+const FUNCIONALIDADES = [
+  'Configurações iniciais',
+  'Chatbot',
+  'Funil',
+  'Tela de atendimento',
+  'Campanhas',
+  'Dashboard',
+  'Relatórios',
+  'JetVoice',
+  'IA',
+  'Conexões de número',
+  'Conexões de redes sociais',
+  'BM',
+  'Gupshup',
+  'Outras funcionalidades',
+];
+
+const UPSELL_OPTS = [
+  'JetVoice',
+  'IA',
+  'Funil',
+  'Usuários',
+  'Campanhas',
+  'Conexões adicionais',
+  'Outros',
+];
+
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
+let reuniaoSelecionada = null;
+let realizadoSelecionados = new Set();
+let pendenteSelecionados = new Set();
+let upsellSelecionados = new Set();
+let recordingCount = 1;
+
+function init() {
+  // Data no header
+  const hoje = new Date();
+  const dd = String(hoje.getDate()).padStart(2,'0');
+  const mm = String(hoje.getMonth()+1).padStart(2,'0');
+  const aaaa = hoje.getFullYear();
+  document.getElementById('header-date').textContent = `📅 ${dd}/${mm}/${aaaa}`;
+
+  // Pills reunião
+  document.querySelectorAll('#reuniao-pills .pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('#reuniao-pills .pill').forEach(p => p.classList.remove('selected'));
+      pill.classList.add('selected');
+      reuniaoSelecionada = pill.dataset.value;
+      const outroWrap = document.getElementById('outro-nome-wrap');
+      if (reuniaoSelecionada === 'OUTRO') {
+        outroWrap.classList.remove('hidden');
+        document.getElementById('outro-nome').focus();
+      } else {
+        outroWrap.classList.add('hidden');
+        document.getElementById('outro-nome').value = '';
+      }
+    });
+  });
+
+  // Checkboxes realizado
+  buildCheckboxGrid('realizado-grid', FUNCIONALIDADES, realizadoSelecionados);
+  // Checkboxes pendente
+  buildCheckboxGrid('pendente-grid', FUNCIONALIDADES, pendenteSelecionados);
+  // Checkboxes upsell
+  buildCheckboxGrid('upsell-grid', UPSELL_OPTS, upsellSelecionados);
+}
+
+function buildCheckboxGrid(gridId, items, selectedSet) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = '';
+  items.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'check-card';
+    card.innerHTML = `<div class="chk-icon"></div><span>${item}</span>`;
+    card.addEventListener('click', () => {
+      if (selectedSet.has(item)) {
+        selectedSet.delete(item);
+        card.classList.remove('checked');
+      } else {
+        selectedSet.add(item);
+        card.classList.add('checked');
+      }
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ============================================================
+// GRAVAÇÃO
+// ============================================================
+function addRecording() {
+  recordingCount++;
+  const list = document.getElementById('recording-list');
+  const item = document.createElement('div');
+  item.className = 'recording-item';
+  item.dataset.index = recordingCount;
+  item.innerHTML = `
+    <span class="recording-label">GRAVAÇÃO ${recordingCount}:</span>
+    <input type="text" placeholder="Cole o link aqui" />
+    <button class="btn-remove-rec" onclick="removeRecording(this)" title="Remover">×</button>
+  `;
+  list.appendChild(item);
+  renumberRecordings();
+}
+
+function removeRecording(btn) {
+  const item = btn.closest('.recording-item');
+  item.remove();
+  renumberRecordings();
+}
+
+function renumberRecordings() {
+  const items = document.querySelectorAll('#recording-list .recording-item');
+  items.forEach((item, idx) => {
+    const label = item.querySelector('.recording-label');
+    if (label) label.textContent = `GRAVAÇÃO ${idx+1}:`;
+  });
+  recordingCount = items.length;
+}
+
+function getRecordings() {
+  const inputs = document.querySelectorAll('#recording-list input[type="text"]');
+  return Array.from(inputs).map(i => i.value.trim()).filter(v => v !== '');
+}
+
+// ============================================================
+// DATA ATUAL
+// ============================================================
+function getDataHoje() {
+  const hoje = new Date();
+  const dd = String(hoje.getDate()).padStart(2,'0');
+  const mm = String(hoje.getMonth()+1).padStart(2,'0');
+  const aaaa = hoje.getFullYear();
+  return `${dd}/${mm}/${aaaa}`;
+}
+
+// ============================================================
+// GERAR FRASE NATURAL — REALIZADO
+// ============================================================
+function gerarFraseRealizado(selecionados) {
+  const lista = Array.from(selecionados);
+  if (lista.length === 0) return null;
+
+  // Grupos semânticos para frases mais naturais
+  const configItems = ['Configurações iniciais'];
+  const conexoesItems = ['Conexões de número', 'Conexões de redes sociais'];
+  const bmGupshup = ['BM', 'Gupshup'];
+
+  const isOnlyBmGupshup = lista.every(i => bmGupshup.includes(i));
+  const hasOnlyConfig = lista.every(i => configItems.includes(i));
+
+  if (isOnlyBmGupshup && lista.length <= 2 && lista.some(i => bmGupshup.includes(i)) && !lista.some(i => !bmGupshup.includes(i))) {
+    return `Durante a reunião, foram realizadas configurações relacionadas ${formatarLista(lista.map(i => {
+      if (i === 'BM') return 'à BM';
+      if (i === 'Gupshup') return 'ao Gupshup';
+      return i;
+    }))}.`;
+  }
+
+  // Frase padrão natural
+  const nomes = lista.map(i => i);
+  return `Durante a reunião, foram apresentadas e/ou realizadas ${formatarLista(nomes)}.`;
+}
+
+function formatarLista(arr) {
+  if (arr.length === 0) return '';
+  if (arr.length === 1) return arr[0];
+  const last = arr[arr.length - 1];
+  const rest = arr.slice(0, -1);
+  return rest.join(', ') + ' e ' + last;
+}
+
+// ============================================================
+// GERAR NOTA
+// ============================================================
+function gerarNota() {
+  // --- Reunião ---
+  let reuniaoLabel = reuniaoSelecionada;
+  let reuniaoTexto = '';
+  let tituloExtra = '';
+
+  if (!reuniaoLabel) {
+    alert('Por favor, selecione qual reunião está sendo registrada.');
+    return;
+  }
+
+  if (reuniaoLabel === 'OUTRO') {
+    const nomeOutro = document.getElementById('outro-nome').value.trim();
+    if (!nomeOutro) {
+      alert('Por favor, informe o nome da reunião no campo "Nome da reunião".');
+      document.getElementById('outro-nome').focus();
+      return;
+    }
+    tituloExtra = nomeOutro.toUpperCase();
+    reuniaoTexto = nomeOutro.charAt(0).toUpperCase() + nomeOutro.slice(1).toLowerCase();
+  } else if (reuniaoLabel === 'REUNIÃO DE RETREINAMENTO') {
+    tituloExtra = 'REUNIÃO DE RETREINAMENTO';
+    reuniaoTexto = 'Reunião de retreinamento';
+  } else {
+    // "5° REUNIÃO" → "5° reunião"
+    tituloExtra = reuniaoLabel;
+    reuniaoTexto = reuniaoLabel.charAt(0).toUpperCase() + reuniaoLabel.slice(1).toLowerCase();
+  }
+
+  // --- Dados ---
+  const duracao = document.getElementById('duracao').value.trim();
+  const participantes = document.getElementById('participantes').value.trim();
+  const data = getDataHoje();
+
+  // --- Linha de duração/participantes ---
+  let linhaDP = '';
+  if (duracao && participantes) {
+    linhaDP = `Teve duração de ${duracao} e contou com a presença de ${participantes}.`;
+  } else if (duracao) {
+    linhaDP = `Teve duração de ${duracao}.`;
+  } else if (participantes) {
+    linhaDP = `Contou com a presença de ${participantes}.`;
+  }
+
+  // --- Realizado ---
+  const fraseRealizado = gerarFraseRealizado(realizadoSelecionados);
+  const realizadoExtra = document.getElementById('realizado-extra').value.trim();
+
+  let blocoRealizado = '';
+  if (fraseRealizado) {
+    blocoRealizado = fraseRealizado;
+    if (realizadoExtra) blocoRealizado += '\n\n' + realizadoExtra;
+  } else if (realizadoExtra) {
+    blocoRealizado = realizadoExtra;
+  }
+
+  // --- Pendente ---
+  const pendentes = Array.from(pendenteSelecionados);
+  const pendenteExtra = document.getElementById('pendente-extra').value.trim();
+
+  let pendenteExtras = [];
+  if (pendenteExtra) {
+    pendenteExtras = pendenteExtra.split(',').map(s => {
+      const t = s.trim();
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    }).filter(s => s.length > 0);
+  }
+
+  const todasPendencias = [...pendentes, ...pendenteExtras];
+
+  let blocoPendente = '';
+  if (todasPendencias.length > 0) {
+    blocoPendente = 'Para a próxima reunião ficou pendente:\n';
+    blocoPendente += todasPendencias.map(p => `- ${p}`).join('\n');
+  }
+
+  // --- Upsell ---
+  const upsells = Array.from(upsellSelecionados);
+  const upsellObs = document.getElementById('upsell-obs').value.trim();
+
+  let blocoUpsell = '';
+  if (upsells.length > 0 || upsellObs) {
+    if (upsells.length > 0) {
+      const upsellNomes = upsells.map(u => u.toLowerCase());
+      const upsellStr = formatarLista(upsellNomes);
+      blocoUpsell = `Possível upsell: ${upsellStr.charAt(0).toUpperCase() + upsellStr.slice(1)}.`;
+      if (upsellObs) blocoUpsell += ` ${upsellObs}`;
+    } else {
+      blocoUpsell = `Possível upsell: ${upsellObs}`;
+    }
+  }
+
+  // --- Observações ---
+  const obs = document.getElementById('observacoes').value.trim();
+  let blocoObs = '';
+  if (obs) blocoObs = `Observações: ${obs}`;
+
+  // --- Gravação ---
+  const gravacoes = getRecordings();
+  let blocoGravacao = '';
+  if (gravacoes.length === 1) {
+    blocoGravacao = `GRAVAÇÃO: ${gravacoes[0]}`;
+  } else if (gravacoes.length > 1) {
+    blocoGravacao = `GRAVAÇÃO:\n${gravacoes.map(g => `- ${g}`).join('\n')}`;
+  }
+
+  // --- MONTAR NOTA ---
+  const linhas = [];
+
+  // Título
+  linhas.push(`IMPLANTAÇÃO TÉCNICA / ${tituloExtra}`);
+  linhas.push('');
+
+  // Linha de abertura
+  if (reuniaoLabel === 'OUTRO') {
+    linhas.push(`${reuniaoTexto} realizado:`);
+  } else if (reuniaoLabel === 'REUNIÃO DE RETREINAMENTO') {
+    linhas.push(`${reuniaoTexto} de implantação técnica realizada:`);
+  } else {
+    linhas.push(`${reuniaoTexto} de implantação técnica realizada:`);
+  }
+  linhas.push('');
+
+  // Data
+  linhas.push(`Data da conclusão: ${data}.`);
+  linhas.push('');
+
+  // Duração / Participantes
+  if (linhaDP) {
+    linhas.push(linhaDP);
+    linhas.push('');
+  }
+
+  // Realizado
+  if (blocoRealizado) {
+    linhas.push(blocoRealizado);
+    linhas.push('');
+  }
+
+  // Pendente
+  if (blocoPendente) {
+    linhas.push(blocoPendente);
+    linhas.push('');
+  }
+
+  // Upsell
+  if (blocoUpsell) {
+    linhas.push(blocoUpsell);
+    linhas.push('');
+  }
+
+  // Observações
+  if (blocoObs) {
+    linhas.push(blocoObs);
+    linhas.push('');
+  }
+
+  // Gravação
+  if (blocoGravacao) {
+    linhas.push(blocoGravacao);
+    linhas.push('');
+  }
+
+  // Remover última linha em branco
+  while (linhas.length > 0 && linhas[linhas.length-1] === '') linhas.pop();
+
+  const notaFinal = linhas.join('\n');
+
+  // Exibir
+  document.getElementById('nota-output').textContent = notaFinal;
+  const notaArea = document.getElementById('nota-area');
+  notaArea.style.display = 'block';
+  notaArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+// COPIAR NOTA
+// ============================================================
+function copiarNota() {
+  const texto = document.getElementById('nota-output').textContent;
+  if (!texto) return;
+  navigator.clipboard.writeText(texto).then(() => {
+    const fb = document.getElementById('copy-feedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2500);
+  }).catch(() => {
+    // Fallback para ambientes sem clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const fb = document.getElementById('copy-feedback');
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 2500);
+  });
+}
+
+// ============================================================
+// LIMPAR
+// ============================================================
+function limparTudo() {
+  // Reunião
+  reuniaoSelecionada = null;
+  document.querySelectorAll('#reuniao-pills .pill').forEach(p => p.classList.remove('selected'));
+  document.getElementById('outro-nome-wrap').classList.add('hidden');
+  document.getElementById('outro-nome').value = '';
+
+  // Campos de texto
+  document.getElementById('duracao').value = '';
+  document.getElementById('participantes').value = '';
+  document.getElementById('realizado-extra').value = '';
+  document.getElementById('pendente-extra').value = '';
+  document.getElementById('upsell-obs').value = '';
+  document.getElementById('observacoes').value = '';
+
+  // Checkboxes
+  realizadoSelecionados.clear();
+  pendenteSelecionados.clear();
+  upsellSelecionados.clear();
+  document.querySelectorAll('.check-card.checked').forEach(c => c.classList.remove('checked'));
+
+  // Gravações — voltar só 1
+  const list = document.getElementById('recording-list');
+  list.innerHTML = `
+    <div class="recording-item">
+      <span class="recording-label">GRAVAÇÃO 1:</span>
+      <input type="text" placeholder="Cole o link aqui (ex: https://www.loom.com/...)" />
+    </div>
+  `;
+  recordingCount = 1;
+
+  // Esconder nota
+  const notaArea = document.getElementById('nota-area');
+  notaArea.style.display = 'none';
+  document.getElementById('nota-output').textContent = '';
+  document.getElementById('copy-feedback').classList.remove('show');
+
+  // Voltar ao topo
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// SCROLL TO TOP
+// ============================================================
+window.addEventListener('scroll', () => {
+  const btn = document.getElementById('toTopBtn');
+  if (window.scrollY > 300) btn.classList.add('visible');
+  else btn.classList.remove('visible');
+});
+
+// ============================================================
+// START
+// ============================================================
+init();
+</script>
+</body>
+</html>
