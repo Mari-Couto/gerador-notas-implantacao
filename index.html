@@ -843,16 +843,19 @@ function gerarNota() {
   let blocoUpsell = '';
   if (upsells.length > 0 || upsellObs) {
     if (upsells.length > 0) {
-      blocoUpsell = 'Possível upsell:\n\n';
-      blocoUpsell += upsells.map(u => `• ${u}`).join('\n');
-      if (upsellObs) blocoUpsell += '\n\n' + upsellObs;
+      blocoUpsell = 'Possível upsell: ' + upsells.map(u => `• ${u}`).join(', ');
+      if (upsellObs) blocoUpsell += '\n' + upsellObs;
     } else {
-      blocoUpsell = `Possível upsell:\n\n${upsellObs}`;
+      blocoUpsell = `Possível upsell: ${upsellObs}`;
     }
   }
 
   // --- Observações ---
   const obs = document.getElementById('observacoes').value.trim();
+  let blocoObs = '';
+  if (obs) {
+    blocoObs = `Observações: ${obs}`;
+  }
 
   // --- Gravação ---
   const gravacoes = getRecordings();
@@ -919,12 +922,10 @@ function gerarNota() {
   }
 
   // Observações
-  linhas.push('Observações:');
-  linhas.push('');
-  if (obs) {
-    linhas.push(obs);
+  if (blocoObs) {
+    linhas.push(blocoObs);
+    linhas.push('');
   }
-  linhas.push('');
 
   // Gravação
   if (blocoGravacao) {
