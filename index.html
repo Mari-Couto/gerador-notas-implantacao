@@ -304,8 +304,8 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 20px;
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 13.5px;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
       line-height: 1.75;
       color: var(--text);
       white-space: pre-wrap;
@@ -316,6 +316,7 @@
       gap: 10px;
       margin-top: 14px;
       align-items: center;
+      flex-wrap: wrap;
     }
     .btn-copy {
       padding: 11px 24px;
@@ -337,6 +338,27 @@
       transition: opacity 0.3s;
     }
     .copy-feedback.show { opacity: 1; }
+
+    /* HISTÓRICO */
+    .history-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      margin-top: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .history-card:hover {
+      border-color: var(--accent);
+      background: rgba(79,110,247,0.08);
+    }
+    .history-date { font-weight: 600; color: var(--accent); }
+    .history-info { color: var(--text-muted); }
+    .history-list { max-height: 400px; overflow-y: auto; }
+    .empty-history { color: var(--text-muted); font-style: italic; text-align: center; padding: 20px; }
 
     /* HIDDEN */
     .hidden { display: none !important; }
@@ -393,6 +415,16 @@
 <main>
 
   <!-- ============================
+       0. NOME DO IMPLANTADOR
+  ============================= -->
+  <div class="card">
+    <div class="card-title">0. Seu Nome (Persistido)</div>
+    <label class="field-label">Nome do Implantador</label>
+    <input type="text" id="nomeImplantador" placeholder="Digite seu nome (será salvo automaticamente)" />
+    <div class="tip">Este campo é salvo no navegador e não será apagado ao clicar em "Limpar".</div>
+  </div>
+
+  <!-- ============================
        1. DADOS DA REUNIÃO
   ============================= -->
   <div class="card">
@@ -418,6 +450,9 @@
     </div>
 
     <div class="divider"></div>
+
+    <label class="field-label">Cliente/Empresa</label>
+    <input type="text" id="cliente" placeholder="Ex: Acme Corp" />
 
     <label class="field-label">Duração</label>
     <input type="text" id="duracao" placeholder="Ex: 1h, 1 hora e 30 min, 45 minutos" />
@@ -456,10 +491,19 @@
   </div>
 
   <!-- ============================
-       4. POSSÍVEL UPSELL
+       4. PRÓXIMOS PASSOS
   ============================= -->
   <div class="card">
-    <div class="card-title">4. Possível Upsell</div>
+    <div class="card-title">4. Próximos Passos</div>
+    <textarea id="proximos-passos" placeholder="Descreva os próximos passos da implantação de forma livre e contextualizada (opcional)" style="min-height:80px;"></textarea>
+    <div class="tip">Campo totalmente livre. Não há opções pré-definidas — você decide o que escrever.</div>
+  </div>
+
+  <!-- ============================
+       5. POSSÍVEL UPSELL
+  ============================= -->
+  <div class="card">
+    <div class="card-title">5. Possível Upsell</div>
 
     <div class="checkbox-grid" id="upsell-grid">
       <!-- gerado via JS -->
@@ -470,18 +514,18 @@
   </div>
 
   <!-- ============================
-       5. OBSERVAÇÕES
+       6. OBSERVAÇÕES
   ============================= -->
   <div class="card">
-    <div class="card-title">5. Observações</div>
+    <div class="card-title">6. Observações</div>
     <textarea id="observacoes" placeholder="Ex: Cliente não pretende utilizar API Oficial neste momento (opcional)" style="min-height:80px;"></textarea>
   </div>
 
   <!-- ============================
-       6. GRAVAÇÃO
+       7. GRAVAÇÃO
   ============================= -->
   <div class="card">
-    <div class="card-title">6. Gravação</div>
+    <div class="card-title">7. Gravação</div>
 
     <div class="recording-list" id="recording-list">
       <div class="recording-item">
@@ -501,15 +545,26 @@
   </div>
 
   <!-- ============================
-       7. NOTA GERADA
+       8. NOTA GERADA
   ============================= -->
   <div class="card" id="nota-area">
-    <div class="card-title">7. Nota Gerada</div>
+    <div class="card-title">8. Nota Gerada</div>
     <div class="nota-box" id="nota-output"></div>
     <div class="nota-actions">
       <button class="btn-copy" onclick="copiarNota()">📋 COPIAR NOTA</button>
       <span class="copy-feedback" id="copy-feedback">✓ Nota copiada!</span>
     </div>
+  </div>
+
+  <!-- ============================
+       9. HISTÓRICO DE NOTAS
+  ============================= -->
+  <div class="card" id="historico-area" style="display: none;">
+    <div class="card-title">9. Histórico de Notas Recentes</div>
+    <div class="history-list" id="history-list">
+      <p class="empty-history">Nenhuma nota gerada ainda</p>
+    </div>
+    <button class="btn-secondary" onclick="limparHistorico()" style="width: 100%; margin-top: 12px;">🗑 Limpar Histórico</button>
   </div>
 
 </main>
@@ -534,10 +589,12 @@ const FUNCIONALIDADES = [
   'Conexões de redes sociais',
   'BM',
   'Gupshup',
+  'Contatos',
   'Outras funcionalidades',
 ];
 
 const UPSELL_OPTS = [
+  'Migração para API Oficial',
   'JetVoice',
   'IA',
   'Funil',
@@ -555,6 +612,7 @@ let realizadoSelecionados = new Set();
 let pendenteSelecionados = new Set();
 let upsellSelecionados = new Set();
 let recordingCount = 1;
+let historico = [];
 
 function init() {
   // Data no header
@@ -563,6 +621,24 @@ function init() {
   const mm = String(hoje.getMonth()+1).padStart(2,'0');
   const aaaa = hoje.getFullYear();
   document.getElementById('header-date').textContent = `📅 ${dd}/${mm}/${aaaa}`;
+
+  // Carregar nome do implantador
+  const nomeSalvo = localStorage.getItem('nomeImplantador');
+  if (nomeSalvo) {
+    document.getElementById('nomeImplantador').value = nomeSalvo;
+  }
+
+  // Carregar histórico
+  const historicoSalvo = localStorage.getItem('historicoNotas');
+  if (historicoSalvo) {
+    historico = JSON.parse(historicoSalvo);
+    atualizarHistorico();
+  }
+
+  // Salvar nome quando mudar
+  document.getElementById('nomeImplantador').addEventListener('input', function() {
+    localStorage.setItem('nomeImplantador', this.value);
+  });
 
   // Pills reunião
   document.querySelectorAll('#reuniao-pills .pill').forEach(pill => {
@@ -581,11 +657,9 @@ function init() {
     });
   });
 
-  // Checkboxes realizado
+  // Checkboxes
   buildCheckboxGrid('realizado-grid', FUNCIONALIDADES, realizadoSelecionados);
-  // Checkboxes pendente
   buildCheckboxGrid('pendente-grid', FUNCIONALIDADES, pendenteSelecionados);
-  // Checkboxes upsell
   buildCheckboxGrid('upsell-grid', UPSELL_OPTS, upsellSelecionados);
 }
 
@@ -665,25 +739,8 @@ function gerarFraseRealizado(selecionados) {
   const lista = Array.from(selecionados);
   if (lista.length === 0) return null;
 
-  // Grupos semânticos para frases mais naturais
-  const configItems = ['Configurações iniciais'];
-  const conexoesItems = ['Conexões de número', 'Conexões de redes sociais'];
-  const bmGupshup = ['BM', 'Gupshup'];
-
-  const isOnlyBmGupshup = lista.every(i => bmGupshup.includes(i));
-  const hasOnlyConfig = lista.every(i => configItems.includes(i));
-
-  if (isOnlyBmGupshup && lista.length <= 2 && lista.some(i => bmGupshup.includes(i)) && !lista.some(i => !bmGupshup.includes(i))) {
-    return `Durante a reunião, foram realizadas configurações relacionadas ${formatarLista(lista.map(i => {
-      if (i === 'BM') return 'à BM';
-      if (i === 'Gupshup') return 'ao Gupshup';
-      return i;
-    }))}.`;
-  }
-
-  // Frase padrão natural
   const nomes = lista.map(i => i);
-  return `Durante a reunião, foram apresentadas e/ou realizadas ${formatarLista(nomes)}.`;
+  return `Durante a reunião, foram apresentadas e/ou realizadas as seguintes configurações e funcionalidades: ${formatarLista(nomes)}.`;
 }
 
 function formatarLista(arr) {
@@ -721,12 +778,15 @@ function gerarNota() {
     tituloExtra = 'REUNIÃO DE RETREINAMENTO';
     reuniaoTexto = 'Reunião de retreinamento';
   } else {
-    // "5° REUNIÃO" → "5° reunião"
     tituloExtra = reuniaoLabel;
     reuniaoTexto = reuniaoLabel.charAt(0).toUpperCase() + reuniaoLabel.slice(1).toLowerCase();
   }
 
+  // --- Nome do implantador ---
+  const nomeImplantador = document.getElementById('nomeImplantador').value.trim();
+
   // --- Dados ---
+  const cliente = document.getElementById('cliente').value.trim();
   const duracao = document.getElementById('duracao').value.trim();
   const participantes = document.getElementById('participantes').value.trim();
   const data = getDataHoje();
@@ -734,11 +794,11 @@ function gerarNota() {
   // --- Linha de duração/participantes ---
   let linhaDP = '';
   if (duracao && participantes) {
-    linhaDP = `Teve duração de ${duracao} e contou com a presença de ${participantes}.`;
+    linhaDP = `A reunião teve duração de ${duracao} e contou com a presença de ${participantes}.`;
   } else if (duracao) {
-    linhaDP = `Teve duração de ${duracao}.`;
+    linhaDP = `A reunião teve duração de ${duracao}.`;
   } else if (participantes) {
-    linhaDP = `Contou com a presença de ${participantes}.`;
+    linhaDP = `A reunião contou com a presença de ${participantes}.`;
   }
 
   // --- Realizado ---
@@ -769,9 +829,12 @@ function gerarNota() {
 
   let blocoPendente = '';
   if (todasPendencias.length > 0) {
-    blocoPendente = 'Para a próxima reunião ficou pendente:\n';
-    blocoPendente += todasPendencias.map(p => `- ${p}`).join('\n');
+    blocoPendente = 'Para a continuidade da implantação, ficaram pendentes os seguintes pontos:\n\n';
+    blocoPendente += todasPendencias.map(p => `• ${p}`).join('\n');
   }
+
+  // --- Próximos passos ---
+  const proximosPassos = document.getElementById('proximos-passos').value.trim();
 
   // --- Upsell ---
   const upsells = Array.from(upsellSelecionados);
@@ -780,19 +843,16 @@ function gerarNota() {
   let blocoUpsell = '';
   if (upsells.length > 0 || upsellObs) {
     if (upsells.length > 0) {
-      const upsellNomes = upsells.map(u => u.toLowerCase());
-      const upsellStr = formatarLista(upsellNomes);
-      blocoUpsell = `Possível upsell: ${upsellStr.charAt(0).toUpperCase() + upsellStr.slice(1)}.`;
-      if (upsellObs) blocoUpsell += ` ${upsellObs}`;
+      blocoUpsell = 'Possível upsell:\n\n';
+      blocoUpsell += upsells.map(u => `• ${u}`).join('\n');
+      if (upsellObs) blocoUpsell += '\n\n' + upsellObs;
     } else {
-      blocoUpsell = `Possível upsell: ${upsellObs}`;
+      blocoUpsell = `Possível upsell:\n\n${upsellObs}`;
     }
   }
 
   // --- Observações ---
   const obs = document.getElementById('observacoes').value.trim();
-  let blocoObs = '';
-  if (obs) blocoObs = `Observações: ${obs}`;
 
   // --- Gravação ---
   const gravacoes = getRecordings();
@@ -800,23 +860,25 @@ function gerarNota() {
   if (gravacoes.length === 1) {
     blocoGravacao = `GRAVAÇÃO: ${gravacoes[0]}`;
   } else if (gravacoes.length > 1) {
-    blocoGravacao = `GRAVAÇÃO:\n${gravacoes.map(g => `- ${g}`).join('\n')}`;
+    blocoGravacao = `GRAVAÇÃO:\n\n${gravacoes.map(g => `• ${g}`).join('\n')}`;
   }
 
   // --- MONTAR NOTA ---
   const linhas = [];
 
-  // Título
-  linhas.push(`IMPLANTAÇÃO TÉCNICA / ${tituloExtra}`);
+  // Título com nome do implantador
+  if (nomeImplantador) {
+    linhas.push(`IMPLANTAÇÃO TÉCNICA / ${tituloExtra} (${nomeImplantador})`);
+  } else {
+    linhas.push(`IMPLANTAÇÃO TÉCNICA / ${tituloExtra}`);
+  }
   linhas.push('');
 
   // Linha de abertura
-  if (reuniaoLabel === 'OUTRO') {
-    linhas.push(`${reuniaoTexto} realizado:`);
-  } else if (reuniaoLabel === 'REUNIÃO DE RETREINAMENTO') {
-    linhas.push(`${reuniaoTexto} de implantação técnica realizada:`);
+  if (cliente) {
+    linhas.push(`${cliente} — ${reuniaoTexto} de implantação técnica realizada.`);
   } else {
-    linhas.push(`${reuniaoTexto} de implantação técnica realizada:`);
+    linhas.push(`${reuniaoTexto} de implantação técnica realizada.`);
   }
   linhas.push('');
 
@@ -842,6 +904,14 @@ function gerarNota() {
     linhas.push('');
   }
 
+  // Próximos passos
+  linhas.push('Próximos passos:');
+  linhas.push('');
+  if (proximosPassos) {
+    linhas.push(proximosPassos);
+  }
+  linhas.push('');
+
   // Upsell
   if (blocoUpsell) {
     linhas.push(blocoUpsell);
@@ -849,10 +919,12 @@ function gerarNota() {
   }
 
   // Observações
-  if (blocoObs) {
-    linhas.push(blocoObs);
-    linhas.push('');
+  linhas.push('Observações:');
+  linhas.push('');
+  if (obs) {
+    linhas.push(obs);
   }
+  linhas.push('');
 
   // Gravação
   if (blocoGravacao) {
@@ -869,7 +941,64 @@ function gerarNota() {
   document.getElementById('nota-output').textContent = notaFinal;
   const notaArea = document.getElementById('nota-area');
   notaArea.style.display = 'block';
+
+  // Salvar no histórico
+  salvarNoHistorico({
+    data: getDataHoje(),
+    cliente: cliente || 'Sem cliente',
+    reuniao: tituloExtra,
+    implantador: nomeImplantador || 'Não definido',
+    nota: notaFinal
+  });
+
   notaArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+// HISTÓRICO
+// ============================================================
+function salvarNoHistorico(dados) {
+  historico.unshift(dados);
+  if (historico.length > 20) historico.pop();
+  localStorage.setItem('historicoNotas', JSON.stringify(historico));
+  atualizarHistorico();
+}
+
+function atualizarHistorico() {
+  const historico_area = document.getElementById('historico-area');
+  const history_list = document.getElementById('history-list');
+
+  if (historico.length === 0) {
+    historico_area.style.display = 'none';
+    history_list.innerHTML = '<p class="empty-history">Nenhuma nota gerada ainda</p>';
+    return;
+  }
+
+  historico_area.style.display = 'block';
+  history_list.innerHTML = '';
+
+  historico.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'history-card';
+    card.innerHTML = `
+      <div class="history-date">${item.data} — ${item.cliente}</div>
+      <div class="history-info">${item.reuniao} — ${item.implantador}</div>
+    `;
+    card.addEventListener('click', () => {
+      document.getElementById('nota-output').textContent = item.nota;
+      document.getElementById('nota-area').style.display = 'block';
+      document.getElementById('nota-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    history_list.appendChild(card);
+  });
+}
+
+function limparHistorico() {
+  if (confirm('Tem certeza que deseja apagar todo o histórico de notas?')) {
+    historico = [];
+    localStorage.removeItem('historicoNotas');
+    atualizarHistorico();
+  }
 }
 
 // ============================================================
@@ -883,7 +1012,6 @@ function copiarNota() {
     fb.classList.add('show');
     setTimeout(() => fb.classList.remove('show'), 2500);
   }).catch(() => {
-    // Fallback para ambientes sem clipboard API
     const ta = document.createElement('textarea');
     ta.value = texto;
     ta.style.position = 'fixed';
@@ -909,10 +1037,12 @@ function limparTudo() {
   document.getElementById('outro-nome').value = '';
 
   // Campos de texto
+  document.getElementById('cliente').value = '';
   document.getElementById('duracao').value = '';
   document.getElementById('participantes').value = '';
   document.getElementById('realizado-extra').value = '';
   document.getElementById('pendente-extra').value = '';
+  document.getElementById('proximos-passos').value = '';
   document.getElementById('upsell-obs').value = '';
   document.getElementById('observacoes').value = '';
 
@@ -922,7 +1052,7 @@ function limparTudo() {
   upsellSelecionados.clear();
   document.querySelectorAll('.check-card.checked').forEach(c => c.classList.remove('checked'));
 
-  // Gravações — voltar só 1
+  // Gravações
   const list = document.getElementById('recording-list');
   list.innerHTML = `
     <div class="recording-item">
