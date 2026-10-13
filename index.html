@@ -539,8 +539,18 @@
   <!-- ============================
        BOTÕES DE AÇÃO
   ============================= -->
+  <div class="card hidden" id="editing-banner">
+    <p id="editing-label"></p>
+    <button class="btn-secondary" onclick="cancelarEdicao()">Cancelar edição</button>
+  </div>
+  <div class="card hidden" id="legacy-editor">
+    <label class="field-label" for="legacy-text">Editar nota antiga</label>
+    <p class="tip">Esta nota foi salva sem os campos do formulário. Edite o texto diretamente.</p>
+    <textarea id="legacy-text" style="min-height:320px; margin-top:12px;"></textarea>
+    <button class="btn-primary" onclick="salvarEdicaoAntiga()" style="margin-top:12px;">Salvar alterações</button>
+  </div>
   <div class="actions">
-    <button class="btn-primary" onclick="gerarNota()">⚡ GERAR NOTA</button>
+    <button class="btn-primary" id="btn-gerar" onclick="gerarNota()">⚡ GERAR NOTA</button>
     <button class="btn-secondary" onclick="limparTudo()">🗑 LIMPAR</button>
   </div>
 
@@ -613,6 +623,71 @@ let pendenteSelecionados = new Set();
 let upsellSelecionados = new Set();
 let recordingCount = 1;
 let historico = [];
+let editingIndex = null;
+const CAMPOS_NOTA = ['nomeImplantador', 'outro-nome', 'cliente', 'duracao', 'participantes',
+  'realizado-extra', 'pendente-extra', 'proximos-passos', 'upsell-obs', 'observacoes'];
+
+function capturarFormulario() {
+  return {
+    campos: Object.fromEntries(CAMPOS_NOTA.map(id => [id, document.getElementById(id).value])),
+    reuniao: reuniaoSelecionada,
+    realizados: [...realizadoSelecionados], pendentes: [...pendenteSelecionados], upsells: [...upsellSelecionados],
+    gravacoes: Array.from(document.querySelectorAll('#recording-list input')).map(input => input.value)
+  };
+}
+
+function editarHistorico(idx) {
+  if (!confirm('Abrir esta nota para edição? O preenchimento atual será substituído.')) return;
+  const item = historico[idx];
+  limparTudo(false);
+  editingIndex = idx;
+  document.getElementById('editing-banner').classList.remove('hidden');
+  document.getElementById('editing-label').textContent = `Editando: ${item.cliente} — ${item.reuniao} (${item.data})`;
+  if (!item.formulario) {
+    document.getElementById('legacy-editor').classList.remove('hidden');
+    document.getElementById('legacy-text').value = item.nota;
+    document.getElementById('btn-gerar').disabled = true;
+    document.getElementById('legacy-editor').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  const f = item.formulario;
+  CAMPOS_NOTA.forEach(id => { document.getElementById(id).value = f.campos[id] || ''; });
+  reuniaoSelecionada = f.reuniao;
+  document.querySelectorAll('#reuniao-pills .pill').forEach(p => p.classList.toggle('selected', p.dataset.value === reuniaoSelecionada));
+  document.getElementById('outro-nome-wrap').classList.toggle('hidden', reuniaoSelecionada !== 'OUTRO');
+  realizadoSelecionados = new Set(f.realizados);
+  pendenteSelecionados = new Set(f.pendentes);
+  upsellSelecionados = new Set(f.upsells);
+  buildCheckboxGrid('realizado-grid', FUNCIONALIDADES, realizadoSelecionados);
+  buildCheckboxGrid('pendente-grid', FUNCIONALIDADES, pendenteSelecionados);
+  buildCheckboxGrid('upsell-grid', UPSELL_OPTS, upsellSelecionados);
+  const links = f.gravacoes.length ? f.gravacoes : [''];
+  links.slice(1).forEach(() => addRecording());
+  document.querySelectorAll('#recording-list input').forEach((input, i) => { input.value = links[i]; });
+  document.getElementById('btn-gerar').textContent = 'Salvar alterações';
+}
+
+function encerrarEdicao() {
+  editingIndex = null;
+  document.getElementById('editing-banner').classList.add('hidden');
+  document.getElementById('legacy-editor').classList.add('hidden');
+  document.getElementById('btn-gerar').disabled = false;
+  document.getElementById('btn-gerar').textContent = '⚡ GERAR NOTA';
+}
+
+function cancelarEdicao() {
+  if (confirm('Cancelar a edição e limpar os campos?')) limparTudo(false);
+}
+
+function salvarEdicaoAntiga() {
+  if (editingIndex === null) return;
+  const nota = document.getElementById('legacy-text').value.trim();
+  if (!nota) { alert('A nota não pode ficar vazia.'); return; }
+  salvarNoHistorico({...historico[editingIndex], nota});
+  document.getElementById('nota-output').textContent = nota;
+  document.getElementById('nota-area').style.display = 'block';
+  document.getElementById('nota-area').scrollIntoView({behavior:'smooth', block:'start'});
+}
 
 function init() {
   // Data no header
@@ -668,7 +743,7 @@ function buildCheckboxGrid(gridId, items, selectedSet) {
   grid.innerHTML = '';
   items.forEach(item => {
     const card = document.createElement('div');
-    card.className = 'check-card';
+    card.className = selectedSet.has(item) ? 'check-card checked' : 'check-card';
     card.innerHTML = `<div class="chk-icon"></div><span>${item}</span>`;
     card.addEventListener('click', () => {
       if (selectedSet.has(item)) {
@@ -789,7 +864,7 @@ function gerarNota() {
   const cliente = document.getElementById('cliente').value.trim();
   const duracao = document.getElementById('duracao').value.trim();
   const participantes = document.getElementById('participantes').value.trim();
-  const data = getDataHoje();
+  const data = editingIndex !== null ? historico[editingIndex].data : getDataHoje();
 
   // --- Linha de duração/participantes ---
   let linhaDP = '';
@@ -808,7 +883,7 @@ function gerarNota() {
   let blocoRealizado = '';
   if (fraseRealizado) {
     blocoRealizado = fraseRealizado;
-    if (realizadoExtra) blocoRealizado += '\n\n' + realizadoExtra;
+    if (realizadoExtra) blocoRealizado += ' ' + realizadoExtra;
   } else if (realizadoExtra) {
     blocoRealizado = realizadoExtra;
   }
@@ -829,7 +904,7 @@ function gerarNota() {
 
   let blocoPendente = '';
   if (todasPendencias.length > 0) {
-    blocoPendente = 'Para a continuidade da implantação, ficaram pendentes os seguintes pontos:\n\n';
+    blocoPendente = 'Pendências:\n';
     blocoPendente += todasPendencias.map(p => `• ${p}`).join('\n');
   }
 
@@ -843,7 +918,7 @@ function gerarNota() {
   let blocoUpsell = '';
   if (upsells.length > 0 || upsellObs) {
     if (upsells.length > 0) {
-      blocoUpsell = 'Possível upsell: ' + upsells.map(u => `• ${u}`).join(', ');
+      blocoUpsell = 'Possível upsell:\n' + upsells.map(u => `• ${u}`).join('\n');
       if (upsellObs) blocoUpsell += '\n' + upsellObs;
     } else {
       blocoUpsell = `Possível upsell: ${upsellObs}`;
@@ -886,7 +961,7 @@ function gerarNota() {
   linhas.push('');
 
   // Data
-  linhas.push(`Data da conclusão: ${data}.`);
+  linhas.push(`Data da reunião: ${data}.`);
   linhas.push('');
 
   // Duração / Participantes
@@ -908,12 +983,10 @@ function gerarNota() {
   }
 
   // Próximos passos
-  linhas.push('Próximos passos:');
-  linhas.push('');
   if (proximosPassos) {
-    linhas.push(proximosPassos);
+    linhas.push(`Próximos passos: ${proximosPassos}`);
+    linhas.push('');
   }
-  linhas.push('');
 
   // Upsell
   if (blocoUpsell) {
@@ -945,11 +1018,12 @@ function gerarNota() {
 
   // Salvar no histórico
   salvarNoHistorico({
-    data: getDataHoje(),
+    data,
     cliente: cliente || 'Sem cliente',
     reuniao: tituloExtra,
     implantador: nomeImplantador || 'Não definido',
-    nota: notaFinal
+    nota: notaFinal,
+    formulario: capturarFormulario()
   });
 
   notaArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -959,7 +1033,9 @@ function gerarNota() {
 // HISTÓRICO
 // ============================================================
 function salvarNoHistorico(dados) {
-  historico.unshift(dados);
+  if (editingIndex !== null) historico[editingIndex] = dados;
+  else historico.unshift(dados);
+  encerrarEdicao();
   if (historico.length > 20) historico.pop();
   localStorage.setItem('historicoNotas', JSON.stringify(historico));
   atualizarHistorico();
@@ -981,10 +1057,18 @@ function atualizarHistorico() {
   historico.forEach((item, idx) => {
     const card = document.createElement('div');
     card.className = 'history-card';
-    card.innerHTML = `
-      <div class="history-date">${item.data} — ${item.cliente}</div>
-      <div class="history-info">${item.reuniao} — ${item.implantador}</div>
-    `;
+    const date = document.createElement('div');
+    date.className = 'history-date';
+    date.textContent = `${item.data} — ${item.cliente}`;
+    const info = document.createElement('div');
+    info.className = 'history-info';
+    info.textContent = `${item.reuniao} — ${item.implantador}`;
+    const edit = document.createElement('button');
+    edit.className = 'btn-secondary';
+    edit.style.cssText = 'padding:6px 12px; margin-top:8px;';
+    edit.textContent = 'Editar nota';
+    edit.addEventListener('click', event => { event.stopPropagation(); editarHistorico(idx); });
+    card.append(date, info, edit);
     card.addEventListener('click', () => {
       document.getElementById('nota-output').textContent = item.nota;
       document.getElementById('nota-area').style.display = 'block';
@@ -996,6 +1080,7 @@ function atualizarHistorico() {
 
 function limparHistorico() {
   if (confirm('Tem certeza que deseja apagar todo o histórico de notas?')) {
+    encerrarEdicao();
     historico = [];
     localStorage.removeItem('historicoNotas');
     atualizarHistorico();
@@ -1030,7 +1115,9 @@ function copiarNota() {
 // ============================================================
 // LIMPAR
 // ============================================================
-function limparTudo() {
+function limparTudo(perguntar = true) {
+  if (perguntar && !confirm('Deseja realmente limpar os campos preenchidos?')) return;
+  encerrarEdicao();
   // Reunião
   reuniaoSelecionada = null;
   document.querySelectorAll('#reuniao-pills .pill').forEach(p => p.classList.remove('selected'));
