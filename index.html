@@ -8,24 +8,24 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --border: #2e3350;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface2: #f9faff;
+      --border: #dde3ef;
       --accent: #4f6ef7;
       --accent-hover: #3d5ce0;
-      --accent-light: rgba(79,110,247,0.15);
-      --accent-selected: rgba(79,110,247,0.25);
-      --green: #22c55e;
+      --accent-light: rgba(79,110,247,0.06);
+      --accent-selected: #eef2ff;
+      --green: #15803d;
       --green-bg: rgba(34,197,94,0.12);
-      --text: #e8eaf6;
-      --text-muted: #8b90a8;
-      --text-label: #a0a8c8;
+      --text: #182440;
+      --text-muted: #65728a;
+      --text-label: #263551;
       --danger: #ef4444;
       --warn: #f59e0b;
-      --radius: 10px;
-      --radius-sm: 6px;
-      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 20px rgba(31,50,90,0.05);
     }
 
     body {
@@ -100,11 +100,10 @@
       padding: 24px;
     }
     .card-title {
-      font-size: 11px;
+      font-size: 17px;
       font-weight: 700;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      color: var(--accent);
+      letter-spacing: -0.3px;
+      color: var(--text);
       margin-bottom: 18px;
       display: flex;
       align-items: center;
@@ -397,13 +396,70 @@
       z-index: 200;
     }
     #toTopBtn.visible { display: flex; }
+    /* Tema claro e organização visual */
+    header { padding: 16px 0; box-shadow: 0 1px 8px rgba(31,50,90,0.025); }
+    .header-icon { background: var(--accent-selected); color: var(--accent); }
+    .header-date { background: transparent; border: none; padding-right: 0; white-space: nowrap; }
+    main { gap: 18px; padding-top: 30px; }
+    .page-intro { padding: 0 4px 4px; }
+    .page-intro h2 { font-size: 29px; line-height: 1.25; letter-spacing: -0.8px; margin-bottom: 6px; }
+    .page-intro p { color: var(--text-muted); font-size: 14px; }
+    .card { box-shadow: var(--shadow); }
+    .card-title::after { display: none; }
+    input[type="text"], textarea { background: #fff; padding: 11px 14px; }
+    input[type="text"]::placeholder, textarea::placeholder { color: #7b879d; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 18px; }
+    .field-row .field-label { margin-top: 0; }
+    .pill { border-radius: 8px; background: #fff; color: var(--text-label); border-width: 1px; padding: 8px 13px; }
+    .pill.selected { background: var(--accent); color: #fff; }
+    .checkbox-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .check-card { background: #fff; color: var(--text-label); border-width: 1px; padding: 10px 12px; }
+    .check-card.checked { color: var(--text); font-weight: 500; }
+    .check-card .chk-icon { background: #fff; border-color: #aebbd2; }
+    .tip { background: #f4f6ff; border-left-color: #b6c3ff; color: var(--text-muted); }
+    .btn-primary { box-shadow: 0 3px 8px rgba(79,110,247,0.15); letter-spacing: 0; }
+    .btn-secondary { background: #fff; color: var(--text-label); }
+    .btn-secondary:hover { background: #fff8ed; }
+    .btn-copy { background: var(--accent); }
+    .btn-copy:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+    button:focus-visible, .pill:focus-visible, .check-card:focus-visible {
+      outline: 3px solid #a7b7ff; outline-offset: 3px;
+    }
+    .nota-box { background: #f8faff; border-color: #dce4f7; }
+    .history-card { background: #fff; }
+    #editing-banner { border-color: #bfceff; background: #f0f4ff; }
+    #editing-banner p { margin-bottom: 12px; }
+    #nota-area, #legacy-editor { scroll-margin-top: 100px; }
+    @media (max-width: 640px) {
+      .header-inner { padding: 0 16px; gap: 10px; }
+      .header-title h1 { font-size: 16px; }
+      .header-title p { font-size: 11px; }
+      .header-date { font-size: 11px; padding-left: 4px; }
+      main { padding: 24px 16px 70px; gap: 16px; }
+      .page-intro h2 { font-size: 25px; }
+      .card { padding: 18px; }
+      .card-title { font-size: 16px; }
+      .checkbox-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .check-card { padding: 10px; font-size: 12px; gap: 8px; }
+      .field-row { grid-template-columns: 1fr; gap: 16px; }
+      .recording-item { flex-wrap: wrap; gap: 8px; }
+      .recording-label { width: 100%; }
+      .recording-item input { min-width: 0; }
+      .actions .btn-secondary { flex: 1; }
+      #toTopBtn { bottom: 18px; right: 16px; }
+    }
+    @media (max-width: 380px) {
+      .header-date { display: none; }
+      .checkbox-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 
 <header>
   <div class="header-inner">
-    <div class="header-icon">📋</div>
+    <div class="header-icon"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M9 5H5v16h14V5h-4"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M8 11h8M8 15h8"/></svg></div>
     <div class="header-title">
       <h1>Gerador de Notas</h1>
       <p>Implantação Técnica — Jet One</p>
@@ -413,12 +469,16 @@
 </header>
 
 <main>
+  <div class="page-intro">
+    <h2>Registre sua reunião</h2>
+    <p>Organize as informações e gere sua nota em poucos cliques.</p>
+  </div>
 
   <!-- ============================
        0. NOME DO IMPLANTADOR
   ============================= -->
   <div class="card">
-    <div class="card-title">0. Seu Nome (Persistido)</div>
+    <div class="card-title">Nome do implantador</div>
     <label class="field-label">Nome do Implantador</label>
     <input type="text" id="nomeImplantador" placeholder="Digite seu nome (será salvo automaticamente)" />
     <div class="tip">Este campo é salvo no navegador e não será apagado ao clicar em "Limpar".</div>
@@ -454,11 +514,16 @@
     <label class="field-label">Cliente/Empresa</label>
     <input type="text" id="cliente" placeholder="Ex: Acme Corp" />
 
-    <label class="field-label">Duração</label>
-    <input type="text" id="duracao" placeholder="Ex: 1h, 1 hora e 30 min, 45 minutos" />
-
-    <label class="field-label">Participantes</label>
-    <input type="text" id="participantes" placeholder="Ex: Lucas, Maria e equipe" />
+    <div class="field-row">
+      <div>
+        <label class="field-label" for="duracao">Duração</label>
+        <input type="text" id="duracao" placeholder="Ex: 1h, 1 hora e 30 min, 45 minutos" />
+      </div>
+      <div>
+        <label class="field-label" for="participantes">Participantes</label>
+        <input type="text" id="participantes" placeholder="Ex: Lucas, Maria e equipe" />
+      </div>
+    </div>
   </div>
 
   <!-- ============================
